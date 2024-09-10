@@ -1,0 +1,93 @@
+/*
+#
+#  RollingSum_Global (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=256, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=0) buffer VBO
+{
+    vec4 data[] ;
+};
+
+layout(std430, binding=1) buffer meaVBO
+{
+    float sum[2] ;
+};
+
+shared vec4 pos_R_shared[256] ;
+shared vec4 vel_M_shared[256] ;
+
+void main()
+{
+    uint id  = gl_LocalInvocationID.x ;
+    pos_R_shared[id] = vec4(0,0,0,0) ;
+
+    // X*256 --> 256 elements
+    // Repeatedly add --> to shared memory
+    for(uint n=0 ; n<NUM_REPEAT ; ++n)
+    {
+        uint index = 2*(id + 256*n) ;
+        pos_R_shared[id] += data[index];
+        vel_M_shared[id] += data[index+1];
+    }
+    barrier();
+    //memoryBarrierShared();
+
+    // 256-->64 elements -- with synthread()
+    // 256 -> 128
+    if( id<128 ){
+        pos_R_shared[id] += pos_R_shared[id+128] ;
+        vel_M_shared[id] += vel_M_shared[id+128] ;
+    }
+    //barrier();
+    memoryBarrierShared();
+    // 128 -> 64
+    if( id<64 ){
+        pos_R_shared[id] += pos_R_shared[id+64] ;
+        vel_M_shared[id] += vel_M_shared[id+64] ;
+    }
+    //barrier();
+    memoryBarrierShared();
+
+    // 64 --> 1 elements -- without synthread() [due to warp]
+    // 64 -> 32
+    if( id<32 ){
+        pos_R_shared[id] += pos_R_shared[id+32] ;
+        vel_M_shared[id] += vel_M_shared[id+32] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<16 ){
+        pos_R_shared[id] += pos_R_shared[id+16] ;
+        vel_M_shared[id] += vel_M_shared[id+16] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<8 ){
+        pos_R_shared[id] += pos_R_shared[id+8] ;
+        vel_M_shared[id] += vel_M_shared[id+8] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<4 ){
+        pos_R_shared[id] += pos_R_shared[id+4] ;
+        vel_M_shared[id] += vel_M_shared[id+4] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<2 ){
+        pos_R_shared[id] += pos_R_shared[id+2] ;
+        vel_M_shared[id] += vel_M_shared[id+2] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<1 ){
+        sum[0] = pos_R_shared[id].x + pos_R_shared[id+1].x ;
+        sum[1] = vel_M_shared[id].x + vel_M_shared[id+1].x ;
+    }
+
+}

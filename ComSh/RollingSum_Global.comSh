@@ -1,0 +1,33 @@
+/*
+#
+#  RollingSum_Global (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=256, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=2) buffer ptrVBO
+{
+    uint global_data[] ;
+};
+
+shared uint accu_value ;
+
+void main()
+{
+    uint id  = gl_LocalInvocationID.x ;
+
+    for(uint n=1 ; n<NUM_REPEAT ; ++n)
+    {
+        uint pos = 256*n + id ;
+
+        if( id == 0 ){ accu_value =  global_data[pos-1] ; }
+        barrier();
+
+        global_data[pos] = accu_value + global_data[pos] ;
+        barrier();
+    }
+
+}

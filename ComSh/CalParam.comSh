@@ -1,0 +1,43 @@
+/*
+#
+#  Calculate parameters
+#  (Doing measurementsCollision)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=0) buffer VBO1
+{
+    vec4 data_in[] ;
+};
+
+layout(std430, binding=3) buffer VBO2
+{
+    vec4 param[] ;
+};
+
+uniform vec2 mass_range ; // min, max
+
+void main()
+{
+    uvec3 ID = gl_WorkGroupID ;
+    uint id = ID.x + ID.y*gl_NumWorkGroups.x ;
+
+    uint index = 2*id ;
+    vec4 vel_m = data_in[index+1] ;
+
+    if( mass_range.x < vel_m.w && vel_m.w < mass_range.y ){
+        // Testcase: Individual mass and radius
+        // --> Edit simulation.cpp to remove m* and 0.5*m* as well
+        //param[index] = vec4(1,1,1,1)*vel_m.w ;
+        //param[index+1] = vec4(1,1,1,1)*data_in[index].w ;
+        param[index]   = vec4(vel_m.w, vel_m.xyz) ;
+        param[index+1] = vec4(vel_m.xyz*vel_m.xyz, 1) ;
+    }else{
+        param[index]   = vec4(0,0,0,0) ;
+        param[index+1] = vec4(0,0,0,0) ;
+    }
+}

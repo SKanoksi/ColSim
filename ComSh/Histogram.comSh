@@ -1,0 +1,40 @@
+/*
+#
+#  Histogram (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=0) buffer VBO
+{
+    vec4 global_data[] ;     // Can only be scalar, vec2, vec4 !!!
+};
+
+layout(std430, binding=1) buffer countVBO
+{
+    uint count[] ;
+};
+
+uniform vec3 Shift ;
+
+void main()
+{
+    uvec3 ID  = gl_WorkGroupID ;
+    uint id = ID.x + ID.y*gl_NumWorkGroups.x ;
+
+    for(uint n=0 ; n<NUM_REPEAT ; ++n)
+    {
+        uint index = (n+8*id)*2 ;
+        vec3 pos = global_data[index].xyz ;
+        uvec3 i = uvec3(floor( (Shift.x + OFFSET_X + pos.x)/STRIDE_X ),
+                        floor( (Shift.y + OFFSET_Y + pos.y)/STRIDE_Y ) ,
+                        floor( (Shift.z + OFFSET_Z + pos.z)/STRIDE_Z )) ;
+
+        uint bin = i.x + NL_BOX_X*(i.y + NL_BOX_Y*i.z) ;
+        atomicAdd(count[bin], 1);
+    }
+
+}

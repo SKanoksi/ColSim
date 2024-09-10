@@ -1,0 +1,15 @@
+#version 430 core
+layout (location = 0) in vec3 sphere ;
+layout (location = 1) in vec4 pos ;
+layout (location = 2) in vec4 vel ;
+
+out float speed ;
+
+uniform mat4 Trans ;
+
+void main()
+{
+	gl_Position = Trans * vec4(pos.w*sphere+pos.xyz, 1.0f);
+	//speed = length(vel.xyz) ;
+	speed = pos.w*vel.w ; // Color = R*M
+}

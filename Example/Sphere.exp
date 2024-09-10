@@ -1,0 +1,27 @@
+
+# Execute: ColSim.exe < XXX.exp >& XXX.log
+
+ntypes       = 2                           # Prior to particle properties
+
+num          = 51455 ; 1                   # *** Total MUST be divisible by 256 ***
+BoxSize      = (128.0, 128.0, 128.0)       # (lx, ly, lz) in nanometer
+NumCell      = (32,32,32)
+CellSize     = (4.01, 4.01, 4.01)
+
+NumTimeStep  = 20000
+TimeStepSize = 0.002                                  # in ns *** Carefully chosen ***
+velocity     = (0.0, 0.0, 0.0) ; (0.0, 0.0, 0.0)      # in m/s = nm/ns
+temperature  = 273.15 ; 0.1                           # in Kelvin
+
+# N2 ; O2
+mass         = 28.0  ; 10010.0          # in g/mol *** MUST from light to heavy (>9999.0 --> Immovable )***
+radius       = 0.284 ;  14.2            # in nanometer
+
+
+ShowOutputOnly  = True
+init            = Random               # Init = Random, Split_x, Split_y, Split_z
+Gravity         = 0. #-9.81            # (m/s^2) <-- Earth gravity = -9.81
+BC_x            = Periodic             # Solid or Periodic
+BC_y            = Periodic             # Solid or Periodic
+BC_z            = Periodic             # Solid or Periodic
+

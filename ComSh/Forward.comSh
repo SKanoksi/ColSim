@@ -1,0 +1,45 @@
+/*
+#
+#  Forward (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=0) buffer VBO1
+{
+    vec4 data[] ;     // Can only be scalar, vec2, vec4 !!!
+};
+
+layout(std430, binding=4) buffer hitVBO
+{
+    uint num_collision ;
+    uint num_hit_x[2] ;
+    uint num_hit_y[2] ;
+    uint num_hit_z[2] ;
+};
+
+void main()
+{
+    uvec3 ID = gl_WorkGroupID ;
+    uint id  = ID.x + ID.y*gl_NumWorkGroups.x ;
+    uint index = 2*id ;
+    vec4 pos_R = data[index] ;
+    vec4 vel_M = data[index+1] ;
+
+    // Verlet method
+    vec3 new_vel = vel_M.xyz + vec3(0.,0.,GDT) ;
+    vec3 new_pos = pos_R.xyz + ( vel_M.xyz + vec3(0.,0.,HALF_GDT) )*TIME_STEP_SIZE ;
+
+    // BC condition
+    BC_X
+    BC_Y
+    BC_Z
+
+    data[index].xyz   = new_pos ;
+    data[index+1].xyz = new_vel ;
+
+
+}

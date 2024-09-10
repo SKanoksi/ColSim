@@ -1,0 +1,54 @@
+/*
+#
+#  Rearrange (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=0) buffer VBO1
+{
+    vec4 data_in[] ;     // Can only be scalar, vec2, vec4 !!!
+};
+
+layout(std430, binding=1) buffer countVBO
+{
+    uint count[] ;
+};
+
+layout(std430, binding=2) buffer ptrVBO
+{
+    uint ptr[] ;
+};
+
+layout(std430, binding=3) buffer VBO2
+{
+    vec4 data_out[] ;     // Can only be scalar, vec2, vec4 !!!
+};
+
+uniform vec3 Shift ;
+
+void main()
+{
+    uvec3 ID = gl_WorkGroupID ;
+    uint id = ID.x + ID.y*gl_NumWorkGroups.x ;
+
+    uint index = 2*id ;
+    vec4 pos = data_in[index]   ;
+    vec4 vel = data_in[index+1] ;
+
+    uvec3 i = uvec3(floor( (Shift.x + OFFSET_X + pos.x)/STRIDE_X ),
+                    floor( (Shift.y + OFFSET_Y + pos.y)/STRIDE_Y ) ,
+                    floor( (Shift.z + OFFSET_Z + pos.z)/STRIDE_Z )) ;
+
+    uint bin = i.x + NL_BOX_X*(i.y + NL_BOX_Y*i.z) ;
+    uint loc = atomicAdd(ptr[bin], -1) -1 ; // Start at 0 not 1
+
+    loc = 2*loc ;
+    data_out[loc]   = pos ;
+    data_out[loc+1] = vel ;
+
+    //atomicAdd(count[bin], -1) ; // For checking
+}

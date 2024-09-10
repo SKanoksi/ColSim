@@ -1,0 +1,74 @@
+/*
+#
+#  Collision [within the box] (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+
+
+layout(std430, binding=1) buffer countVBO
+{
+    uint count[] ;
+};
+
+layout(std430, binding=2) buffer ptrVBO
+{
+    uint ptr[] ;
+};
+
+layout(std430, binding=3) buffer VBO2
+{
+    vec4 data[] ;     // Can only be scalar, vec2, vec4 !!!
+};
+
+layout(std430, binding=4) buffer hitVBO
+{
+    uint num_collision ;
+    uint num_hit[6] ;
+};
+
+void main()
+{
+    uint index = gl_WorkGroupID.x ;
+
+    uint ipos = 2*ptr[index] ;
+    uint num  = 2*count[index] ;
+
+    int a,b ;
+    for(b=0 ; b<num ; b+=2)
+    {
+      vec4 posB = data[ipos+b] ;
+      for(a=b+2 ; a<num ; a+=2)
+      {
+        vec4 posA = data[ipos+a] ;
+        vec3 D = posB.xyz - posA.xyz ;
+        float dist = length(D) ;
+        if( dist < posB.w + posA.w )
+        {
+          vec4 velB = data[ipos+b+1] ;
+          vec4 velA = data[ipos+a+1] ;
+          vec3 DeltaV = velB.xyz - velA.xyz ;
+          if( length(D + DeltaV*TIME_STEP_SIZE) < dist )
+          {
+            atomicAdd(num_collision, 1);
+
+            vec3 d1 = D/dist ;
+            vec3 d2 = normalize(vec3(d1.y,-d1.x,0)) ;
+            vec3 d3 = cross(d1, d2) ;
+
+            float M = velA.w + velB.w ;
+            vec3 Vcm = ( velA.xyz*velA.w + velB.xyz*velB.w )/M ;
+
+            data[ipos+b+1].xyz = d1*dot(d1, Vcm - velA.w*DeltaV/M) + d2*dot(d2, velB.xyz) + d3*dot(d3, velB.xyz) ;
+            data[ipos+a+1].xyz = d1*dot(d1, Vcm + velB.w*DeltaV/M) + d2*dot(d2, velA.xyz) + d3*dot(d3, velA.xyz) ;
+          }
+        }
+      }
+    }
+
+    // Init for the next round
+    count[index] = 0 ;
+}

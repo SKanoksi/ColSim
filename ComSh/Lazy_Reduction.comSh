@@ -1,0 +1,94 @@
+/*
+#
+#  Reduction_Global (of Compute shader)
+#  (Lazy version)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=256, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=3) buffer VBO2
+{
+    vec4 data[] ;
+};
+
+layout(std430, binding=5) buffer meaVBO
+{
+    vec4 sum[] ;
+};
+
+shared vec4 momentum_mass_shared[256] ;
+shared vec4 energy_num_shared[256] ;
+
+void main()
+{
+    uint id  = gl_LocalInvocationID.x ;
+    momentum_mass_shared[id] = vec4(0,0,0,0) ;
+    energy_num_shared[id]    = vec4(0,0,0,0) ;
+
+    // *** X*256 --> 256 elements ***
+    // Repeatedly add --> to shared memory
+    for(uint n=0 ; n<NUM_REPEAT ; ++n)
+    {
+        uint index = 2*(id + 256*n) ;
+        momentum_mass_shared[id] += data[index]   ;
+        energy_num_shared[id]    += data[index+1] ;
+    }
+    barrier();
+    //memoryBarrierShared();
+
+
+    // *** 256-->64 elements -- with synthread() ***
+    if( id<128 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+128] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+128] ;
+    }
+    //barrier();
+    memoryBarrierShared();
+    if( id<64 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+64] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+64] ;
+    }
+    //barrier();
+    memoryBarrierShared();
+
+
+    // *** 64 --> 1 elements -- without synthread() [due to warp] ***
+    if( id<32 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+32] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+32] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<16 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+16] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+16] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<8 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+8] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+8] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<4 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+4] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+4] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<2 ){
+        momentum_mass_shared[id] += momentum_mass_shared[id+2] ;
+        energy_num_shared[id]    +=    energy_num_shared[id+2] ;
+    }
+    //barrier();
+    //memoryBarrierShared();
+    if( id<1 ){
+        sum[0] = momentum_mass_shared[id] + momentum_mass_shared[id+1] ;
+        sum[1] = energy_num_shared[id]    +    energy_num_shared[id+1] ;
+    }
+
+}

@@ -1,0 +1,102 @@
+/*
+#
+#  RollingSum_Wrap (of Compute shader)
+#
+# Copyright (c) 2023
+# Somrath Kanoksirirath <somrath.kan@ncr.nstda.or.th>
+*/
+#version 430 core
+layout(local_size_x=32, local_size_y=1, local_size_z=1) in;
+
+layout(std430, binding=1) buffer countVBO
+{
+    uvec4 data_in[] ;
+};
+
+layout(std430, binding=2) buffer ptrVBO
+{
+    uvec4 data_out[] ;
+};
+
+shared uvec4 data[64];
+
+uint id, id2 ;
+
+void RollingSum_Wrap()
+{
+    // Note: Warp = 32 threads --> Implicit barrier
+    // does not need barrier();
+
+    // 0th -- 1
+    data[id].y = data[id].x + data[id].y ;
+    data[id].z = data[id].y + data[id].z ;
+    data[id].w = data[id].z + data[id].w ;
+    data[id2].y = data[id2].x + data[id2].y ;
+    data[id2].z = data[id2].y + data[id2].z ;
+    data[id2].w = data[id2].z + data[id2].w ;
+
+    // 1st -- 2
+    uint from = 2*id ;
+    uint to = from + 1 ;
+    data[to].x = data[from].w + data[to].x ;
+    data[to].y = data[from].w + data[to].y ;
+    data[to].z = data[from].w + data[to].z ;
+    data[to].w = data[from].w + data[to].w ;
+
+    // 2nd -- 4
+    from = 4*uint(floor(id/2)) + 1 ;
+    to = from + (id%2) + 1 ;
+    data[to].x = data[from].w + data[to].x ;
+    data[to].y = data[from].w + data[to].y ;
+    data[to].z = data[from].w + data[to].z ;
+    data[to].w = data[from].w + data[to].w ;
+
+
+    // 3rd -- 8
+    from = 8*uint(floor(id/4)) + 3 ;
+    to = from + (id%4) + 1 ;
+    data[to].x = data[from].w + data[to].x ;
+    data[to].y = data[from].w + data[to].y ;
+    data[to].z = data[from].w + data[to].z ;
+    data[to].w = data[from].w + data[to].w ;
+
+    // 4th -- 16
+    from = 16*uint(floor(id/8)) + 7 ;
+    to = from + (id%8) + 1 ;
+    data[to].x = data[from].w + data[to].x ;
+    data[to].y = data[from].w + data[to].y ;
+    data[to].z = data[from].w + data[to].z ;
+    data[to].w = data[from].w + data[to].w ;
+
+    // 5th -- 32
+    from = 32*uint(floor(id/16)) + 15 ;
+    to = from + (id%16) + 1 ;
+    data[to].x = data[from].w + data[to].x ;
+    data[to].y = data[from].w + data[to].y ;
+    data[to].z = data[from].w + data[to].z ;
+    data[to].w = data[from].w + data[to].w ;
+
+    // 5th -- 64
+    to = 32 + id ;
+    data[to].x = data[31].w + data[to].x ;
+    data[to].y = data[31].w + data[to].y ;
+    data[to].z = data[31].w + data[to].z ;
+    data[to].w = data[31].w + data[to].w ;
+}
+
+// 32 threads x 2 IDs x 4 vec4 = 256 elements
+void main()
+{
+    id  = gl_LocalInvocationID.x + 64*gl_WorkGroupID.x ; // 64 = 2*WorkGroupSize
+    id2 = id + 32 ;
+
+    // Move data to shared memory
+    data[id]  = data_in[id] ;
+    data[id2] = data_in[id2] ;
+
+    RollingSum_Wrap();
+
+    // Move data to global memory
+    data_out[id]  = data[id] ;
+    data_out[id2] = data[id2] ;
+}
